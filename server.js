@@ -111,4 +111,5 @@ app.get("/guestbook", (req, res) => {
 app.listen(PORT, () => {
   console.log(`RSVP backend running on http://localhost:${PORT}`);
   console.log(`Admin panel: http://localhost:${PORT}/admin`);
+  console.log(`Guestbook: http://localhost:${PORT}/guestbook`);
 });
