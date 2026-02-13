@@ -221,52 +221,45 @@
       return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     }
 
-    async function loadComments() {
-      const container = document.getElementById("comments-container");
+    function loadComments() {
+      var container = document.getElementById("comments-container");
 
       if (GOOGLE_SCRIPT_URL === "YOUR_GOOGLE_SCRIPT_URL_HERE") {
-        container.innerHTML = `
-          <div class="empty-book">
-            <p>Setup required: Add your Google Apps Script URL to guestbook.html</p>
-          </div>
-        `;
+        container.innerHTML = '<div class="empty-book"><p>Setup required: Add your Google Apps Script URL to guestbook.html</p></div>';
         return;
       }
 
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL + "?action=comments");
-        const data = await res.json();
-        const comments = data.comments;
+      // Use JSONP (script tag injection) instead of fetch — works on all browsers
+      // including Safari, which blocks fetch CORS through Google's 302 redirect
+      var callbackName = "_commentsCb_" + Date.now();
+      window[callbackName] = function(data) {
+        delete window[callbackName];
+        var comments = data.comments;
 
         if (!comments || comments.length === 0) {
-          container.innerHTML = `
-            <div class="empty-book">
-              <div class="icon">&#128214;</div>
-              <p>No messages yet. The first page awaits...</p>
-            </div>
-          `;
+          container.innerHTML = '<div class="empty-book"><div class="icon">&#128214;</div><p>No messages yet. The first page awaits...</p></div>';
           return;
         }
 
-        container.innerHTML = `
-          <p class="comment-count">${comments.length} message${comments.length !== 1 ? 's' : ''} from our guests</p>
-          ${comments.map(c => `
-            <div class="comment-card">
-              <div class="comment-message">${esc(c.message)}</div>
-              <div class="comment-footer">
-                <span class="comment-author">${esc(c.name)}</span>
-                <span class="comment-date">${formatDate(c.created_at)}</span>
-              </div>
-            </div>
-          `).join("")}
-        `;
-      } catch (err) {
-        container.innerHTML = `
-          <div class="empty-book">
-            <p>Could not load messages. Please try again later.</p>
-          </div>
-        `;
-      }
+        container.innerHTML =
+          '<p class="comment-count">' + comments.length + ' message' + (comments.length !== 1 ? 's' : '') + ' from our guests</p>' +
+          comments.map(function(c) {
+            return '<div class="comment-card">' +
+              '<div class="comment-message">' + esc(c.message) + '</div>' +
+              '<div class="comment-footer">' +
+                '<span class="comment-author">' + esc(c.name) + '</span>' +
+                '<span class="comment-date">' + formatDate(c.created_at) + '</span>' +
+              '</div>' +
+            '</div>';
+          }).join("");
+      };
+      var script = document.createElement("script");
+      script.src = GOOGLE_SCRIPT_URL + "?action=comments&callback=" + callbackName;
+      script.onerror = function() {
+        delete window[callbackName];
+        container.innerHTML = '<div class="empty-book"><p>Could not load messages. Please try again later.</p></div>';
+      };
+      document.head.appendChild(script);
     }
 
     loadComments();

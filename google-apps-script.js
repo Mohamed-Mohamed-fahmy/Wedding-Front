@@ -33,6 +33,7 @@ function getNextId() {
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || "rsvps";
+  const callback = e && e.parameter && e.parameter.callback;
   var result;
 
   if (action === "comments") {
@@ -54,7 +55,16 @@ function doGet(e) {
     result = getRsvps();
   }
 
-  return ContentService.createTextOutput(JSON.stringify(result))
+  var json = JSON.stringify(result);
+
+  // JSONP support: if a callback parameter is provided, wrap the JSON in a function call
+  // This allows loading data via <script> tags, which bypasses CORS entirely
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + json + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService.createTextOutput(json)
     .setMimeType(ContentService.MimeType.JSON);
 }
 

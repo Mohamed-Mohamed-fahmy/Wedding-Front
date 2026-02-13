@@ -104,38 +104,31 @@
       return true;
     }
 
-    async function fetchData() {
+    function fetchData() {
       if (!checkSetup()) return;
 
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL + "?action=rsvps", {
-          redirect: "follow",
-          headers: { "Accept": "application/json" }
-        });
-        if (!res.ok && res.type === "opaqueredirect") {
-          // Safari may block the redirect; retry without CORS constraints
-          const fallback = await fetch(GOOGLE_SCRIPT_URL + "?action=rsvps", {
-            mode: "no-cors",
-            redirect: "follow"
-          });
-          throw new Error("Safari blocked the redirect. Try opening this URL directly: " + GOOGLE_SCRIPT_URL + "?action=rsvps");
+      // Use JSONP (script tag injection) instead of fetch — works on all browsers
+      // including Safari, which blocks fetch CORS through Google's 302 redirect
+      var callbackName = "_rsvpCb_" + Date.now();
+      window[callbackName] = function(data) {
+        delete window[callbackName];
+        if (data.error) {
+          document.getElementById("tbody").innerHTML =
+            '<tr><td colspan="9" class="empty">Error: ' + esc(data.error) + '</td></tr>';
+          return;
         }
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          throw new Error("Invalid JSON response: " + text.substring(0, 200));
-        }
-        if (data.error) throw new Error(data.error);
         allRsvps = data.rsvps || [];
         renderStats(data.stats || { total: 0, accepted: 0, declined: 0, total_guests: 0 });
         renderTable(allRsvps);
-      } catch (err) {
-        console.error("fetchData error:", err);
+      };
+      var script = document.createElement("script");
+      script.src = GOOGLE_SCRIPT_URL + "?action=rsvps&callback=" + callbackName;
+      script.onerror = function() {
+        delete window[callbackName];
         document.getElementById("tbody").innerHTML =
-          '<tr><td colspan="9" class="empty">Error loading RSVPs: ' + esc(err.message) + '</td></tr>';
-      }
+          '<tr><td colspan="9" class="empty">Network error loading RSVPs</td></tr>';
+      };
+      document.head.appendChild(script);
     }
 
     function renderStats(s) {
