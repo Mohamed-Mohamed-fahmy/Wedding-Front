@@ -110,7 +110,9 @@
       // Use JSONP (script tag injection) instead of fetch — works on all browsers
       // including Safari, which blocks fetch CORS through Google's 302 redirect
       var callbackName = "_rsvpCb_" + Date.now();
+      var loaded = false;
       window[callbackName] = function(data) {
+        loaded = true;
         delete window[callbackName];
         if (data.error) {
           document.getElementById("tbody").innerHTML =
@@ -124,11 +126,20 @@
       var script = document.createElement("script");
       script.src = GOOGLE_SCRIPT_URL + "?action=rsvps&callback=" + callbackName;
       script.onerror = function() {
+        loaded = true;
         delete window[callbackName];
         document.getElementById("tbody").innerHTML =
-          '<tr><td colspan="9" class="empty">Network error loading RSVPs</td></tr>';
+          '<tr><td colspan="9" class="empty">Network error loading RSVPs. Check console for details.</td></tr>';
       };
       document.head.appendChild(script);
+      // Timeout: if callback hasn't fired after 15 seconds, show error
+      setTimeout(function() {
+        if (!loaded) {
+          delete window[callbackName];
+          document.getElementById("tbody").innerHTML =
+            '<tr><td colspan="9" class="empty">Timeout loading RSVPs. Make sure your Apps Script doGet() supports the callback parameter (JSONP). See google-apps-script.js for the updated code.</td></tr>';
+        }
+      }, 15000);
     }
 
     function renderStats(s) {

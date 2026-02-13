@@ -232,7 +232,9 @@
       // Use JSONP (script tag injection) instead of fetch — works on all browsers
       // including Safari, which blocks fetch CORS through Google's 302 redirect
       var callbackName = "_commentsCb_" + Date.now();
+      var loaded = false;
       window[callbackName] = function(data) {
+        loaded = true;
         delete window[callbackName];
         var comments = data.comments;
 
@@ -256,10 +258,17 @@
       var script = document.createElement("script");
       script.src = GOOGLE_SCRIPT_URL + "?action=comments&callback=" + callbackName;
       script.onerror = function() {
+        loaded = true;
         delete window[callbackName];
         container.innerHTML = '<div class="empty-book"><p>Could not load messages. Please try again later.</p></div>';
       };
       document.head.appendChild(script);
+      setTimeout(function() {
+        if (!loaded) {
+          delete window[callbackName];
+          container.innerHTML = '<div class="empty-book"><p>Timeout loading messages. Make sure your Apps Script supports the callback parameter (JSONP).</p></div>';
+        }
+      }, 15000);
     }
 
     loadComments();
