@@ -232,22 +232,15 @@
       });
     }
 
-    async function deleteRsvp(id) {
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "delete", id: id })
-        });
-        const data = await res.json();
-        if (data.error) {
-          alert(data.error);
-        } else {
-          await fetchData();
-        }
-      } catch (err) {
-        alert("Network error. Could not delete RSVP.");
-      }
+    function deleteRsvp(id) {
+      // Use GET via image beacon — works on Safari (survives the 302 redirect)
+      var url = GOOGLE_SCRIPT_URL + "?action=delete&id=" + encodeURIComponent(id);
+      var img = new Image();
+      img.onload = img.onerror = function() {
+        // onerror fires because Apps Script returns JSON, not an image — but the request succeeded
+        fetchData();
+      };
+      img.src = url;
     }
 
     fetchData();

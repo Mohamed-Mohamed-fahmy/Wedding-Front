@@ -33,10 +33,23 @@ function getNextId() {
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || "rsvps";
-  let result;
+  var result;
 
   if (action === "comments") {
     result = getComments();
+  } else if (action === "rsvp") {
+    // RSVP submission via GET (works on Safari — GET survives the 302 redirect)
+    result = addRsvp({
+      name: e.parameter.name,
+      email: e.parameter.email,
+      attendance: e.parameter.attendance,
+      guests: e.parameter.guests,
+      dietary: e.parameter.dietary,
+      message: e.parameter.message
+    });
+  } else if (action === "delete") {
+    // Delete via GET (works on Safari)
+    result = deleteRsvp(e.parameter.id);
   } else {
     result = getRsvps();
   }
