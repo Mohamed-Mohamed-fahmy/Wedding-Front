@@ -29,7 +29,7 @@
     .book-header::before {
       content: '';
       position: absolute;
-      inset: 12px;
+      top: 12px; right: 12px; bottom: 12px; left: 12px;
       border: 2px solid rgba(255,255,255,0.3);
       border-radius: 4px;
       pointer-events: none;
@@ -193,7 +193,7 @@
 </head>
 <body>
   <header class="book-header">
-    <a href="/admin" class="nav-back">Admin Panel</a>
+    <a href="admin.html" class="nav-back">Admin Panel</a>
     <h1>Our Guestbook</h1>
     <div class="divider"></div>
     <p>Words from our loved ones</p>
@@ -204,6 +204,12 @@
   </main>
 
   <script>
+    // =====================================================
+    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL BELOW:
+    // =====================================================
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz71UGnWnBojCaPwW36V2xkl9rBNXF8E-nGkhp1EZDjpFPuuFguVA7zrj91bowIHBlahw/exec";
+    // =====================================================
+
     function esc(str) {
       const d = document.createElement("div");
       d.textContent = str || "";
@@ -211,15 +217,24 @@
     }
 
     function formatDate(dateStr) {
-      const d = new Date(dateStr + "Z");
+      const d = new Date(dateStr);
       return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     }
 
     async function loadComments() {
       const container = document.getElementById("comments-container");
 
+      if (GOOGLE_SCRIPT_URL === "YOUR_GOOGLE_SCRIPT_URL_HERE") {
+        container.innerHTML = `
+          <div class="empty-book">
+            <p>Setup required: Add your Google Apps Script URL to guestbook.html</p>
+          </div>
+        `;
+        return;
+      }
+
       try {
-        const res = await fetch("/api/comments");
+        const res = await fetch(GOOGLE_SCRIPT_URL + "?action=comments");
         const data = await res.json();
         const comments = data.comments;
 
