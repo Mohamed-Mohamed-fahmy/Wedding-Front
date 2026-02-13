@@ -193,7 +193,7 @@
 </head>
 <body>
   <header class="book-header">
-    <a href="admin.html" class="nav-back">Admin Panel</a>
+    <a href="/admin" class="nav-back">Admin Panel</a>
     <h1>Our Guestbook</h1>
     <div class="divider"></div>
     <p>Words from our loved ones</p>
@@ -215,15 +215,11 @@
       return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     }
 
-    // Auto-detect base path for API calls (works on both localhost and GitHub Pages subpath)
-    const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-    const API_BASE = basePath;
-
     async function loadComments() {
       const container = document.getElementById("comments-container");
 
       try {
-        const res = await fetch(API_BASE + "api/comments");
+        const res = await fetch("/api/comments");
         const data = await res.json();
         const comments = data.comments;
 

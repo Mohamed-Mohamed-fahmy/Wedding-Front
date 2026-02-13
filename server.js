@@ -11,11 +11,8 @@ const db = initDatabase();
 app.use(cors());
 app.use(express.json());
 
-// Create a router with all API and page routes
-const router = express.Router();
-
 // Submit RSVP
-router.post("/api/rsvp", (req, res) => {
+app.post("/api/rsvp", (req, res) => {
   const { name, email, attendance, guests, dietary, message } = req.body;
 
   if (!name || !email || !attendance) {
@@ -49,7 +46,7 @@ router.post("/api/rsvp", (req, res) => {
 });
 
 // Get all RSVPs (for admin)
-router.get("/api/rsvps", (req, res) => {
+app.get("/api/rsvps", (req, res) => {
   try {
     const rsvps = db.prepare("SELECT * FROM rsvps ORDER BY created_at DESC").all();
 
@@ -70,7 +67,7 @@ router.get("/api/rsvps", (req, res) => {
 });
 
 // Delete RSVP
-router.delete("/api/rsvp/:id", (req, res) => {
+app.delete("/api/rsvp/:id", (req, res) => {
   const { id } = req.params;
 
   try {
@@ -88,7 +85,7 @@ router.delete("/api/rsvp/:id", (req, res) => {
 });
 
 // Get comments for guestbook (public)
-router.get("/api/comments", (req, res) => {
+app.get("/api/comments", (req, res) => {
   try {
     const comments = db.prepare(
       "SELECT name, message, created_at FROM rsvps WHERE message != '' AND message IS NOT NULL ORDER BY created_at DESC"
@@ -102,26 +99,17 @@ router.get("/api/comments", (req, res) => {
 });
 
 // Serve admin page
-router.get("/admin", (req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
-});
-router.get("/admin.html", (req, res) => {
+app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
 // Serve guestbook page
-router.get("/guestbook", (req, res) => {
+app.get("/guestbook", (req, res) => {
   res.sendFile(path.join(__dirname, "guestbook.html"));
 });
-router.get("/guestbook.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "guestbook.html"));
-});
-
-// Mount router at root and at /Wedding-Front/ subpath (for GitHub Pages compatibility)
-app.use("/", router);
-app.use("/Wedding-Front", router);
 
 app.listen(PORT, () => {
   console.log(`RSVP backend running on http://localhost:${PORT}`);
   console.log(`Admin panel: http://localhost:${PORT}/admin`);
+  console.log(`Guestbook: http://localhost:${PORT}/guestbook`);
 });

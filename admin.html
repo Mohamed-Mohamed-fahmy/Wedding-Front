@@ -47,7 +47,7 @@
       <h1>RSVP Responses</h1>
       <p class="subtitle">Amino & Yasmeen Wedding - Admin Panel</p>
     </div>
-    <a href="guestbook.html" class="nav-link">View Guestbook</a>
+    <a href="/guestbook" class="nav-link">View Guestbook</a>
   </div>
 
   <div class="stats" id="stats"></div>
@@ -78,15 +78,11 @@
   </table>
 
   <script>
-    // Auto-detect base path for API calls (works on both localhost and GitHub Pages subpath)
-    const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-    const API_BASE = basePath;
-
     let allRsvps = [];
     let currentFilter = "all";
 
     async function fetchData() {
-      const res = await fetch(API_BASE + "api/rsvps");
+      const res = await fetch("/api/rsvps");
       const data = await res.json();
       allRsvps = data.rsvps;
       renderStats(data.stats);
@@ -189,7 +185,7 @@
 
     async function deleteRsvp(id) {
       try {
-        const res = await fetch(API_BASE + `api/rsvp/${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/rsvp/${id}`, { method: "DELETE" });
         if (res.ok) {
           await fetchData();
         } else {
