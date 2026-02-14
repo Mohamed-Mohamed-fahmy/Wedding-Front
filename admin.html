@@ -237,14 +237,28 @@
     }
 
     function deleteRsvp(id) {
-      // Use GET via image beacon — works on Safari (survives the 302 redirect)
-      var url = GOOGLE_SCRIPT_URL + "?action=delete&id=" + encodeURIComponent(id);
-      var img = new Image();
-      img.onload = img.onerror = function() {
-        // onerror fires because Apps Script returns JSON, not an image — but the request succeeded
-        fetchData();
+      // Optimistically remove the row from the UI immediately
+      allRsvps = allRsvps.filter(function(r) { return r.id != id; });
+      renderStats({
+        total: allRsvps.length,
+        accepted: allRsvps.filter(function(r) { return r.attendance === "Joyfully Accept"; }).length,
+        declined: allRsvps.filter(function(r) { return r.attendance === "Regretfully Decline"; }).length,
+        total_guests: allRsvps.reduce(function(sum, r) { return sum + (r.attendance === "Joyfully Accept" ? (r.guests || 0) : 0); }, 0)
+      });
+      applyFilters();
+
+      // Send delete via JSONP (GET with callback) — works on Safari
+      var callbackName = "_deleteCb_" + Date.now();
+      window[callbackName] = function(data) {
+        delete window[callbackName];
+        if (data.error) {
+          alert("Delete failed: " + data.error);
+          fetchData(); // reload to restore the row
+        }
       };
-      img.src = url;
+      var script = document.createElement("script");
+      script.src = GOOGLE_SCRIPT_URL + "?action=delete&id=" + encodeURIComponent(id) + "&callback=" + callbackName;
+      document.head.appendChild(script);
     }
 
     fetchData();
