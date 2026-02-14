@@ -53,6 +53,7 @@
   </div>
 
   <div id="setup-banner"></div>
+  <pre id="debug-log" style="background:#1e1e1e;color:#0f0;font-size:0.75rem;padding:1rem;border-radius:8px;margin-bottom:1rem;max-height:200px;overflow:auto;display:block;"></pre>
   <div class="stats" id="stats"></div>
 
   <div class="filters">
@@ -90,6 +91,12 @@
     let allRsvps = [];
     let currentFilter = "all";
 
+    function dbg(msg) {
+      var el = document.getElementById("debug-log");
+      el.textContent += new Date().toLocaleTimeString() + " " + msg + "\n";
+      el.scrollTop = el.scrollHeight;
+    }
+
     function checkSetup() {
       if (GOOGLE_SCRIPT_URL === "YOUR_GOOGLE_SCRIPT_URL_HERE") {
         document.getElementById("setup-banner").innerHTML = `
@@ -121,20 +128,25 @@
       document.getElementById("tbody").innerHTML =
         '<tr><td colspan="9" class="empty">Loading...</td></tr>';
 
-      fetch(GOOGLE_SCRIPT_URL + "?action=rsvps")
+      var url = GOOGLE_SCRIPT_URL + "?action=rsvps";
+      dbg("Fetching: " + url);
+
+      fetch(url)
         .then(function(res) {
-          console.log("RSVP response:", res.status, res.type, res.url);
+          dbg("Response: status=" + res.status + " type=" + res.type + " ok=" + res.ok);
+          dbg("URL: " + res.url);
           return res.text();
         })
         .then(function(text) {
-          console.log("RSVP raw response:", text.substring(0, 300));
+          dbg("Body (" + text.length + " chars): " + text.substring(0, 200));
           var data = JSON.parse(text);
+          dbg("Parsed OK. rsvps=" + (data.rsvps ? data.rsvps.length : "none"));
           handleData(data);
         })
         .catch(function(err) {
-          console.error("RSVP fetch error:", err);
+          dbg("ERROR: " + err.name + ": " + err.message);
           document.getElementById("tbody").innerHTML =
-            '<tr><td colspan="9" class="empty">Error: ' + esc(err.message) + '<br>Open browser console (F12) for details.</td></tr>';
+            '<tr><td colspan="9" class="empty">Error: ' + esc(err.message) + '</td></tr>';
         });
     }
 
