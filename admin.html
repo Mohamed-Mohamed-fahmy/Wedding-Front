@@ -104,24 +104,24 @@
       return true;
     }
 
-    function fetchData() {
-      if (!checkSetup()) return;
+    function handleData(data) {
+      if (data.error) {
+        document.getElementById("tbody").innerHTML =
+          '<tr><td colspan="9" class="empty">Error: ' + esc(data.error) + '</td></tr>';
+        return;
+      }
+      allRsvps = data.rsvps || [];
+      renderStats(data.stats || { total: 0, accepted: 0, declined: 0, total_guests: 0 });
+      renderTable(allRsvps);
+    }
 
-      // Use JSONP (script tag injection) instead of fetch — works on all browsers
-      // including Safari, which blocks fetch CORS through Google's 302 redirect
+    function fetchViaJsonp() {
       var callbackName = "_rsvpCb_" + Date.now();
       var loaded = false;
       window[callbackName] = function(data) {
         loaded = true;
         delete window[callbackName];
-        if (data.error) {
-          document.getElementById("tbody").innerHTML =
-            '<tr><td colspan="9" class="empty">Error: ' + esc(data.error) + '</td></tr>';
-          return;
-        }
-        allRsvps = data.rsvps || [];
-        renderStats(data.stats || { total: 0, accepted: 0, declined: 0, total_guests: 0 });
-        renderTable(allRsvps);
+        handleData(data);
       };
       var script = document.createElement("script");
       script.src = GOOGLE_SCRIPT_URL + "?action=rsvps&callback=" + callbackName;
@@ -129,17 +129,30 @@
         loaded = true;
         delete window[callbackName];
         document.getElementById("tbody").innerHTML =
-          '<tr><td colspan="9" class="empty">Network error loading RSVPs. Check console for details.</td></tr>';
+          '<tr><td colspan="9" class="empty">Could not load RSVPs. Check your Apps Script URL and deployment.</td></tr>';
       };
       document.head.appendChild(script);
-      // Timeout: if callback hasn't fired after 15 seconds, show error
       setTimeout(function() {
         if (!loaded) {
           delete window[callbackName];
           document.getElementById("tbody").innerHTML =
-            '<tr><td colspan="9" class="empty">Timeout loading RSVPs. Make sure your Apps Script doGet() supports the callback parameter (JSONP). See google-apps-script.js for the updated code.</td></tr>';
+            '<tr><td colspan="9" class="empty">Timeout loading RSVPs via JSONP fallback.</td></tr>';
         }
       }, 15000);
+    }
+
+    function fetchData() {
+      if (!checkSetup()) return;
+
+      // Try fetch first (works on most browsers including modern Safari)
+      // Fall back to JSONP if fetch fails (e.g. older Safari CORS issues)
+      fetch(GOOGLE_SCRIPT_URL + "?action=rsvps")
+        .then(function(res) { return res.json(); })
+        .then(function(data) { handleData(data); })
+        .catch(function(err) {
+          console.warn("fetch failed, trying JSONP fallback:", err);
+          fetchViaJsonp();
+        });
     }
 
     function renderStats(s) {
@@ -247,18 +260,8 @@
       });
       applyFilters();
 
-      // Send delete via JSONP (GET with callback) — works on Safari
-      var callbackName = "_deleteCb_" + Date.now();
-      window[callbackName] = function(data) {
-        delete window[callbackName];
-        if (data.error) {
-          alert("Delete failed: " + data.error);
-          fetchData(); // reload to restore the row
-        }
-      };
-      var script = document.createElement("script");
-      script.src = GOOGLE_SCRIPT_URL + "?action=delete&id=" + encodeURIComponent(id) + "&callback=" + callbackName;
-      document.head.appendChild(script);
+      // Fire-and-forget delete via image beacon GET — works on all browsers
+      new Image().src = GOOGLE_SCRIPT_URL + "?action=delete&id=" + encodeURIComponent(id);
     }
 
     fetchData();

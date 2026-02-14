@@ -221,6 +221,25 @@
       return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     }
 
+    function renderComments(comments) {
+      var container = document.getElementById("comments-container");
+      if (!comments || comments.length === 0) {
+        container.innerHTML = '<div class="empty-book"><div class="icon">&#128214;</div><p>No messages yet. The first page awaits...</p></div>';
+        return;
+      }
+      container.innerHTML =
+        '<p class="comment-count">' + comments.length + ' message' + (comments.length !== 1 ? 's' : '') + ' from our guests</p>' +
+        comments.map(function(c) {
+          return '<div class="comment-card">' +
+            '<div class="comment-message">' + esc(c.message) + '</div>' +
+            '<div class="comment-footer">' +
+              '<span class="comment-author">' + esc(c.name) + '</span>' +
+              '<span class="comment-date">' + formatDate(c.created_at) + '</span>' +
+            '</div>' +
+          '</div>';
+        }).join("");
+    }
+
     function loadComments() {
       var container = document.getElementById("comments-container");
 
@@ -229,46 +248,34 @@
         return;
       }
 
-      // Use JSONP (script tag injection) instead of fetch — works on all browsers
-      // including Safari, which blocks fetch CORS through Google's 302 redirect
-      var callbackName = "_commentsCb_" + Date.now();
-      var loaded = false;
-      window[callbackName] = function(data) {
-        loaded = true;
-        delete window[callbackName];
-        var comments = data.comments;
-
-        if (!comments || comments.length === 0) {
-          container.innerHTML = '<div class="empty-book"><div class="icon">&#128214;</div><p>No messages yet. The first page awaits...</p></div>';
-          return;
-        }
-
-        container.innerHTML =
-          '<p class="comment-count">' + comments.length + ' message' + (comments.length !== 1 ? 's' : '') + ' from our guests</p>' +
-          comments.map(function(c) {
-            return '<div class="comment-card">' +
-              '<div class="comment-message">' + esc(c.message) + '</div>' +
-              '<div class="comment-footer">' +
-                '<span class="comment-author">' + esc(c.name) + '</span>' +
-                '<span class="comment-date">' + formatDate(c.created_at) + '</span>' +
-              '</div>' +
-            '</div>';
-          }).join("");
-      };
-      var script = document.createElement("script");
-      script.src = GOOGLE_SCRIPT_URL + "?action=comments&callback=" + callbackName;
-      script.onerror = function() {
-        loaded = true;
-        delete window[callbackName];
-        container.innerHTML = '<div class="empty-book"><p>Could not load messages. Please try again later.</p></div>';
-      };
-      document.head.appendChild(script);
-      setTimeout(function() {
-        if (!loaded) {
-          delete window[callbackName];
-          container.innerHTML = '<div class="empty-book"><p>Timeout loading messages. Make sure your Apps Script supports the callback parameter (JSONP).</p></div>';
-        }
-      }, 15000);
+      // Try fetch first, fall back to JSONP if fetch fails (older Safari)
+      fetch(GOOGLE_SCRIPT_URL + "?action=comments")
+        .then(function(res) { return res.json(); })
+        .then(function(data) { renderComments(data.comments); })
+        .catch(function(err) {
+          console.warn("fetch failed, trying JSONP fallback:", err);
+          var callbackName = "_commentsCb_" + Date.now();
+          var loaded = false;
+          window[callbackName] = function(data) {
+            loaded = true;
+            delete window[callbackName];
+            renderComments(data.comments);
+          };
+          var script = document.createElement("script");
+          script.src = GOOGLE_SCRIPT_URL + "?action=comments&callback=" + callbackName;
+          script.onerror = function() {
+            loaded = true;
+            delete window[callbackName];
+            container.innerHTML = '<div class="empty-book"><p>Could not load messages. Please try again later.</p></div>';
+          };
+          document.head.appendChild(script);
+          setTimeout(function() {
+            if (!loaded) {
+              delete window[callbackName];
+              container.innerHTML = '<div class="empty-book"><p>Timeout loading messages.</p></div>';
+            }
+          }, 15000);
+        });
     }
 
     loadComments();
